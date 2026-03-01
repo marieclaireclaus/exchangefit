@@ -8,6 +8,7 @@
 <meta name="apple-mobile-web-app-title" content="ExchangeFit"/>
 <title>ExchangeFit</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
 <style>
 :root{
   --bg:#0C0C0E;--s1:#161618;--s2:#1E1E21;--s3:#27272B;
@@ -108,6 +109,35 @@ button,input,select{font-family:'Space Grotesk',sans-serif;cursor:pointer;}
 
 @keyframes slideUp{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}
 .su{animation:slideUp .3s cubic-bezier(.34,1.56,.64,1);}
+
+/* ── Quagga scanner overlay (appended to body, never inside #root) ── */
+#qg-wrap{position:fixed;inset:0;background:#000;z-index:1000;
+  max-width:430px;left:50%;transform:translateX(-50%);right:auto;width:100%;}
+#qg-viewport{position:absolute;inset:0;overflow:hidden;}
+#qg-viewport video,#qg-viewport canvas{
+  position:absolute!important;top:0!important;left:0!important;
+  width:100%!important;height:100%!important;object-fit:cover!important;}
+#qg-viewport canvas.drawingBuffer{display:none!important;}
+.qg-head{position:absolute;top:0;left:0;right:0;z-index:20;
+  padding:max(52px,env(safe-area-inset-top,52px)) 18px 14px;
+  background:linear-gradient(to bottom,rgba(0,0,0,.8),transparent);
+  display:flex;justify-content:space-between;align-items:flex-start;}
+.qg-foot{position:absolute;bottom:0;left:0;right:0;z-index:20;
+  background:rgba(10,10,14,.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-radius:20px 20px 0 0;border-top:1px solid rgba(255,255,255,.08);
+  padding:20px 18px max(28px,env(safe-area-inset-bottom,28px));}
+.qg-vf{position:absolute;top:40%;left:50%;transform:translate(-50%,-50%);
+  width:78%;max-width:290px;height:110px;z-index:15;pointer-events:none;}
+.qg-c{position:absolute;width:22px;height:22px;}
+.qg-c.tl{top:0;left:0;border-top:3px solid #2DD4BF;border-left:3px solid #2DD4BF;border-radius:5px 0 0 0;}
+.qg-c.tr{top:0;right:0;border-top:3px solid #2DD4BF;border-right:3px solid #2DD4BF;border-radius:0 5px 0 0;}
+.qg-c.bl{bottom:0;left:0;border-bottom:3px solid #2DD4BF;border-left:3px solid #2DD4BF;border-radius:0 0 0 5px;}
+.qg-c.br{bottom:0;right:0;border-bottom:3px solid #2DD4BF;border-right:3px solid #2DD4BF;border-radius:0 0 5px 0;}
+@keyframes qbeam{0%{top:2px;opacity:1}100%{top:calc(100% - 4px);opacity:.25}}
+.qg-beam{position:absolute;left:6px;right:6px;height:2px;
+  background:linear-gradient(90deg,transparent,#2DD4BF,transparent);
+  box-shadow:0 0 10px #2DD4BF;animation:qbeam 1.6s ease-in-out infinite alternate;}
+.qg-sh{position:absolute;background:rgba(0,0,0,.55);z-index:14;}
 </style>
 </head>
 <body>
@@ -133,9 +163,6 @@ button,input,select{font-family:'Space Grotesk',sans-serif;cursor:pointer;}
   <button id="ibtn" style="background:#09090B;color:var(--teal);border:none;border-radius:8px;padding:9px 16px;font-weight:700;font-size:13px;font-family:'Space Grotesk',sans-serif">Install</button>
   <button id="ix" style="background:none;border:none;color:rgba(0,0,0,.5);font-size:22px;line-height:1">×</button>
 </div>
-
-<!-- Hidden file input for barcode camera -->
-<input id="bc-input" type="file" accept="image/*" capture="environment" style="display:none"/>
 
 <div id="root"></div>
 
@@ -235,56 +262,180 @@ function getPreview(){
   return calcFood(c,p,fa, parseFloat(f.grams)||100);
 }
 
-// ─── Barcode (photo → BarcodeDetector → Open Food Facts) ─────────
-document.getElementById('bc-input').addEventListener('change', async function(){
-  const file = this.files[0]; if(!file) return;
-  this.value='';
+// ─── Quagga Scanner ──────────────────────────────────────────────
+// The scanner overlay lives directly on <body>, completely separate
+// from #root, so render() calls never destroy the camera feed.
 
-  // Show loading state in form
-  S.bcStatus='loading'; render();
-  toast('🔍 Reading barcode…','var(--teal)','#09090B');
-
-  // BarcodeDetector is available natively in Chrome/Android
-  // On iOS Safari we skip detection and show manual entry
-  if(!('BarcodeDetector' in window)){
-    S.bcStatus='noapi'; render();
-    toast('Enter barcode number below','var(--amber)','#09090B');
-    return;
-  }
-
-  try{
-    const detector = new BarcodeDetector({ formats:['ean_13','ean_8','upc_a','upc_e','code_128','code_39'] });
-    const bitmap   = await createImageBitmap(file);
-    const results  = await detector.detect(bitmap);
-    if(!results.length){ S.bcStatus='nocode'; render(); toast('No barcode found — enter manually','var(--red)','#fff'); return; }
-
-    const code = results[0].rawValue;
-    toast('✓ Barcode read — looking up…','var(--teal)','#09090B');
-
-    const r = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json?fields=product_name,nutriments,serving_size`);
-    const d = await r.json();
-    if(d.status!==1){ S.bcStatus='miss'; render(); toast('Product not in database','var(--red)','#fff'); return; }
-
-    const n=d.product.nutriments;
-    const carb=+(n['carbohydrates_100g']||0).toFixed(1);
-    const prot=+(n['proteins_100g']||0).toFixed(1);
-    const fat =+(n['fat_100g']||0).toFixed(1);
-    const name=d.product.product_name||'Scanned product';
-    const serving=Math.round(parseFloat(d.product.serving_size)||100);
-
-    S.ff={ ...S.ff, name, carb:String(carb), prot:String(prot), fat:String(fat), grams:String(serving) };
-    S.bcStatus='found'; render();
-    toast('✓ '+name,'var(--grn)','#09090B');
-  }catch(e){
-    S.bcStatus='idle'; render();
-    toast('Lookup failed — enter manually','var(--red)','#fff');
-  }
-});
+let qgActive = false;
 
 function triggerScan(){
-  S.modal='food'; S.bcStatus='idle'; render();
-  // small delay to let modal render, then trigger file input
-  setTimeout(()=>document.getElementById('bc-input').click(), 120);
+  if(qgActive) return;
+  qgActive = true;
+
+  // Build overlay HTML
+  const wrap = document.createElement('div');
+  wrap.id = 'qg-wrap';
+  wrap.innerHTML = `
+    <div id="qg-viewport"></div>
+    <div class="qg-vf">
+      <div class="qg-c tl"></div><div class="qg-c tr"></div>
+      <div class="qg-c bl"></div><div class="qg-c br"></div>
+      <div class="qg-beam"></div>
+    </div>
+    <!-- shade strips -->
+    <div class="qg-sh" id="sh-t" style="top:0;left:0;right:0"></div>
+    <div class="qg-sh" id="sh-b" style="left:0;right:0;bottom:0"></div>
+    <div class="qg-sh" id="sh-l" style="top:0;left:0;bottom:0"></div>
+    <div class="qg-sh" id="sh-r" style="top:0;right:0;bottom:0"></div>
+    <div class="qg-head">
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#fff">📷 Scan Barcode</div>
+        <div id="qg-status" style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px">Starting camera…</div>
+      </div>
+      <button id="qg-close" style="background:rgba(255,255,255,.15);border:none;border-radius:50%;
+        width:36px;height:36px;color:#fff;font-size:16px;cursor:pointer;
+        display:flex;align-items:center;justify-content:center">✕</button>
+    </div>
+    <div class="qg-foot" id="qg-foot">
+      <p style="font-size:12px;color:rgba(255,255,255,.45);text-align:center;margin-bottom:12px">
+        Hold the barcode steady in the frame — detects automatically
+      </p>
+      <button id="qg-cancel" style="width:100%;padding:13px;border-radius:12px;
+        background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.12);
+        color:rgba(255,255,255,.6);font-size:13px;font-weight:600;font-family:'Space Grotesk',sans-serif">
+        Cancel — enter manually instead
+      </button>
+    </div>`;
+  document.body.appendChild(wrap);
+
+  // Position shade strips after render
+  requestAnimationFrame(()=>{
+    const vf = wrap.querySelector('.qg-vf');
+    if(!vf) return;
+    const vr = vf.getBoundingClientRect();
+    const t=vr.top, b=window.innerHeight-vr.bottom;
+    const l=vr.left, r=window.innerWidth-vr.right;
+    const h=vr.height;
+    document.getElementById('sh-t').style.height=t+'px';
+    document.getElementById('sh-b').style.height=b+'px';
+    document.getElementById('sh-l').style.cssText+=`;top:${t}px;height:${h}px;width:${l}px;`;
+    document.getElementById('sh-r').style.cssText+=`;top:${t}px;height:${h}px;width:${r}px;`;
+  });
+
+  function closeScanner(){
+    try{ Quagga.stop(); }catch(e){}
+    const el = document.getElementById('qg-wrap');
+    if(el) el.remove();
+    qgActive = false;
+  }
+
+  document.getElementById('qg-close').addEventListener('click', closeScanner);
+  document.getElementById('qg-cancel').addEventListener('click',()=>{
+    closeScanner();
+    S.modal='food'; render();
+  });
+
+  // Init Quagga
+  Quagga.init({
+    inputStream:{
+      type:'LiveStream',
+      target: document.getElementById('qg-viewport'),
+      constraints:{ facingMode:'environment', width:{ideal:1280}, height:{ideal:720} },
+      area:{ top:'25%', right:'5%', bottom:'25%', left:'5%' }
+    },
+    decoder:{
+      readers:['ean_reader','ean_8_reader','upc_reader','upc_e_reader','code_128_reader']
+    },
+    locate: true,
+    frequency: 10
+  }, function(err){
+    if(err){
+      const msg = err.name==='NotAllowedError'
+        ? '📵 Camera blocked — go to Settings → Safari → Camera → Allow'
+        : '⚠️ Camera unavailable — open from Safari, not a downloaded file';
+      document.getElementById('qg-status').textContent='';
+      document.getElementById('qg-foot').innerHTML=`
+        <p style="font-size:13px;font-weight:700;color:#F97066;margin-bottom:6px">${msg}</p>
+        <button onclick="document.getElementById('qg-close').click();S.modal='food';render()"
+          style="width:100%;padding:13px;border-radius:12px;background:#FCA000;border:none;
+            color:#09090B;font-size:13px;font-weight:700;font-family:'Space Grotesk',sans-serif">
+          Enter food manually instead
+        </button>`;
+      qgActive=false;
+      return;
+    }
+    document.getElementById('qg-status').textContent='Hold barcode in the frame';
+    Quagga.start();
+  });
+
+  // On successful detection
+  let detected = false;
+  Quagga.onDetected(async function(result){
+    if(detected) return;
+    detected = true;
+    Quagga.stop();
+
+    const code = result.codeResult.code;
+    document.getElementById('qg-status').textContent='✓ Barcode detected — looking up…';
+    document.getElementById('qg-foot').innerHTML=`
+      <div style="text-align:center;padding:8px 0">
+        <div style="font-size:13px;color:rgba(255,255,255,.7);font-weight:600">🔍 Looking up product…</div>
+        <div style="font-size:10px;color:rgba(255,255,255,.3);margin-top:4px;font-family:'Space Mono',monospace">${code}</div>
+      </div>`;
+
+    try{
+      const r = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json?fields=product_name,nutriments,serving_size`);
+      const d = await r.json();
+
+      if(d.status!==1){
+        // Not found
+        document.getElementById('qg-foot').innerHTML=`
+          <p style="font-size:13px;font-weight:700;color:#F97066;margin-bottom:4px">❌ Product not in database</p>
+          <p style="font-size:10px;color:rgba(255,255,255,.3);font-family:'Space Mono',monospace;margin-bottom:12px">${code}</p>
+          <div style="display:flex;gap:10px">
+            <button id="qg-retry"
+              style="flex:1;padding:12px;border-radius:10px;background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.1);color:rgba(255,255,255,.6);font-size:12px;font-weight:600;font-family:'Space Grotesk',sans-serif">
+              Try Again
+            </button>
+            <button id="qg-manual"
+              style="flex:2;padding:12px;border-radius:10px;background:#FCA000;border:none;color:#09090B;font-size:13px;font-weight:700;font-family:'Space Grotesk',sans-serif">
+              Enter Manually
+            </button>
+          </div>`;
+        document.getElementById('qg-retry').addEventListener('click',()=>{
+          detected=false;
+          document.getElementById('qg-status').textContent='Hold barcode in frame';
+          document.getElementById('qg-foot').innerHTML=`<p style="font-size:12px;color:rgba(255,255,255,.45);text-align:center;margin-bottom:12px">Hold the barcode steady in the frame</p>`;
+          Quagga.start();
+        });
+        document.getElementById('qg-manual').addEventListener('click',()=>{
+          closeScanner(); S.modal='food'; render();
+        });
+        return;
+      }
+
+      // Found — fill in form and open modal
+      const n = d.product.nutriments;
+      const carb = +(n['carbohydrates_100g']||0).toFixed(1);
+      const prot = +(n['proteins_100g']||0).toFixed(1);
+      const fat  = +(n['fat_100g']||0).toFixed(1);
+      const name = d.product.product_name || 'Scanned product';
+      const serving = Math.round(parseFloat(d.product.serving_size)||100);
+
+      S.ff = { ...S.ff, name, carb:String(carb), prot:String(prot), fat:String(fat), grams:String(serving) };
+      S.bcStatus = 'found';
+
+      closeScanner();
+      S.modal = 'food';
+      render();
+      toast('✓ '+name, 'var(--grn)', '#09090B');
+
+    }catch(e){
+      closeScanner();
+      S.modal='food'; render();
+      toast('Network error — enter manually','var(--red)','#fff');
+    }
+  });
 }
 
 // ─── Toast ───────────────────────────────────────────────────────
