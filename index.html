@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black"/>
+<meta name="apple-mobile-web-app-title" content="ExchangeFit"/>
+<title>ExchangeFit</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#0C0C0E;--s1:#161618;--s2:#1E1E21;--s3:#27272B;
+  --bd:#2E2E33;--teal:#2DD4BF;--amber:#FCA000;--violet:#9B7EF8;
+  --red:#F97066;--grn:#4ADE80;--txt:#EBEBEF;--sub:#8B8B96;--dim:#50505A;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;background:var(--bg);color:var(--txt);overscroll-behavior:none;font-family:'Space Grotesk',sans-serif;}
+::-webkit-scrollbar{display:none;}
+button,input,select{font-family:'Space Grotesk',sans-serif;cursor:pointer;}
+
+/* ── App shell ── */
+#root{max-width:430px;margin:0 auto;min-height:100vh;
+  padding-bottom:calc(68px + env(safe-area-inset-bottom,0px));}
+
+/* ── Nav ── */
+#nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;
+  background:rgba(16,16,18,.97);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+  border-top:1px solid var(--bd);z-index:90;display:flex;
+  padding-bottom:env(safe-area-inset-bottom,0px);}
+.nb{flex:1;border:none;background:none;padding:11px 4px 13px;
+  display:flex;flex-direction:column;align-items:center;gap:3px;}
+.ni{font-size:20px;line-height:1.1;}
+.nl{font-size:8px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;}
+
+/* ── Page header ── */
+.ph{padding:calc(48px + env(safe-area-inset-top,0px)) 18px 16px;}
+.pt{font-size:24px;font-weight:700;letter-spacing:-.02em;}
+
+/* ── Cards ── */
+.card{background:var(--s1);border:1px solid var(--bd);border-radius:16px;padding:16px;margin-bottom:10px;}
+.card2{background:var(--s2);border:1px solid var(--bd);border-radius:12px;padding:12px 14px;margin-bottom:8px;}
+
+/* ── Inputs ── */
+.lbl{font-size:9px;font-weight:700;color:var(--sub);letter-spacing:.12em;text-transform:uppercase;display:block;margin-bottom:5px;}
+.inp{width:100%;background:var(--s2);border:1.5px solid var(--bd);color:var(--txt);
+  border-radius:10px;padding:12px 14px;font-size:14px;outline:none;transition:border-color .15s;}
+.inp:focus{border-color:var(--teal);}
+.fg{margin-bottom:14px;}
+
+/* ── Macro boxes ── */
+.mbox{background:var(--s2);border:1.5px solid var(--bd);border-radius:12px;padding:12px 8px;text-align:center;}
+.mbox span{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;display:block;margin-bottom:6px;}
+.mbox input{width:100%;background:none;border:none;font-size:20px;font-weight:700;
+  font-family:'Space Mono',monospace;text-align:center;color:var(--txt);outline:none;}
+
+/* ── Buttons ── */
+.btn{display:block;width:100%;padding:15px;border-radius:12px;border:none;
+  font-size:15px;font-weight:700;font-family:'Space Grotesk',sans-serif;letter-spacing:-.01em;text-align:center;}
+.btn-teal{background:var(--teal);color:#09090B;}
+.btn-amber{background:var(--amber);color:#09090B;}
+.btn-ghost{background:var(--s2);color:var(--sub);border:1.5px solid var(--bd);}
+
+/* ── Bottom sheet ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;
+  display:flex;align-items:flex-end;backdrop-filter:blur(10px);}
+.sheet{background:var(--s1);width:100%;max-width:430px;margin:0 auto;border-radius:22px 22px 0 0;
+  border-top:1px solid var(--bd);
+  padding:0 18px calc(28px + env(safe-area-inset-bottom,0px));max-height:92vh;overflow-y:auto;}
+.hdl{width:38px;height:4px;background:var(--bd);border-radius:2px;margin:13px auto 15px;}
+
+/* ── Pills ── */
+.pill{display:inline-block;padding:2px 10px;border-radius:20px;font-size:10px;font-weight:700;
+  font-family:'Space Mono',monospace;letter-spacing:.04em;}
+
+/* ── Progress bars ── */
+.bar-row{margin-bottom:9px;}
+.bar-meta{display:flex;justify-content:space-between;font-size:10px;font-family:'Space Mono',monospace;
+  color:var(--sub);margin-bottom:3px;}
+.bar-track{height:5px;background:var(--s3);border-radius:3px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:3px;transition:width .4s ease;}
+
+/* ── SVG ring ── */
+.ring-txt{font-family:'Space Mono',monospace;}
+
+/* ── Toast ── */
+#toast{position:fixed;bottom:calc(78px + env(safe-area-inset-bottom,0px));
+  left:50%;transform:translateX(-50%) translateY(4px);opacity:0;
+  padding:9px 20px;border-radius:50px;font-size:12px;font-weight:700;
+  font-family:'Space Mono',monospace;letter-spacing:.03em;
+  box-shadow:0 4px 20px rgba(0,0,0,.5);z-index:500;white-space:nowrap;pointer-events:none;
+  transition:opacity .2s,transform .2s;}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* ── iOS guide ── */
+#ios-tip{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:400;align-items:flex-end;}
+#ios-tip.on{display:flex;}
+.isheet{background:var(--s1);width:100%;max-width:430px;margin:0 auto;border-radius:22px 22px 0 0;
+  border-top:1px solid var(--bd);padding:22px 18px calc(32px + env(safe-area-inset-bottom,0px));}
+.istep{background:var(--s2);border-left:3px solid var(--teal);border-radius:8px;
+  padding:11px 13px;margin-bottom:8px;font-size:13px;color:#ccc;line-height:1.5;}
+
+/* ── Install banner ── */
+#ibanner{display:none;position:fixed;bottom:0;left:0;right:0;z-index:300;
+  background:var(--teal);color:#09090B;padding:13px 18px;
+  flex-direction:row;align-items:center;gap:12px;}
+#ibanner.on{display:flex;}
+
+@keyframes slideUp{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}
+.su{animation:slideUp .3s cubic-bezier(.34,1.56,.64,1);}
+</style>
+</head>
+<body>
+
+<div id="ios-tip">
+  <div class="isheet">
+    <div style="width:36px;height:4px;background:var(--bd);border-radius:2px;margin:0 auto 16px"></div>
+    <div style="font-size:17px;font-weight:700;margin-bottom:4px">Install ExchangeFit 📲</div>
+    <div style="font-size:12px;color:var(--sub);margin-bottom:14px">No App Store — runs like a native app</div>
+    <div class="istep">1 · Open in <b style="color:#fff">Safari</b> (not Chrome)</div>
+    <div class="istep">2 · Tap the <b style="color:#fff">Share ↑</b> button</div>
+    <div class="istep">3 · Tap <b style="color:var(--teal)">Add to Home Screen</b></div>
+    <div class="istep">4 · Tap <b style="color:var(--teal)">Add</b> — done! 🎉</div>
+    <div style="font-size:11px;color:var(--sub);margin:12px 0 16px;line-height:1.7">
+      📷 For barcode scanning: tap the camera icon inside the app and allow camera access when prompted.
+    </div>
+    <button class="btn btn-teal" onclick="document.getElementById('ios-tip').classList.remove('on')">Got it!</button>
+  </div>
+</div>
+
+<div id="ibanner">
+  <div style="flex:1"><b style="font-size:14px">Install ExchangeFit</b><br><span style="font-size:11px;opacity:.7">Works offline · saves to your phone</span></div>
+  <button id="ibtn" style="background:#09090B;color:var(--teal);border:none;border-radius:8px;padding:9px 16px;font-weight:700;font-size:13px;font-family:'Space Grotesk',sans-serif">Install</button>
+  <button id="ix" style="background:none;border:none;color:rgba(0,0,0,.5);font-size:22px;line-height:1">×</button>
+</div>
+
+<!-- Hidden file input for barcode camera -->
+<input id="bc-input" type="file" accept="image/*" capture="environment" style="display:none"/>
+
+<div id="root"></div>
+
+<div id="toast"></div>
+
+<script>
+'use strict';
+
+// ─── Constants ───────────────────────────────────────────────────
+const TARGET = 1300;
+const WT_KG  = 73;
+const TDEE   = 1776;
+
+// 3 exchange types only
+const EX = {
+  P:{ name:'Protein', color:'#9B7EF8', bg:'rgba(155,126,248,.15)', carb:0,  prot:7, fat:3,  kcal:55 },
+  S:{ name:'Starch',  color:'#FCA000', bg:'rgba(252,160,0,.15)',   carb:15, prot:3, fat:1,  kcal:80 },
+  F:{ name:'Fat',     color:'#F0C040', bg:'rgba(240,192,64,.15)',  carb:0,  prot:0, fat:5,  kcal:45 },
+};
+
+const MEALS = ['🌅 Breakfast','☀️ Lunch','🌙 Dinner','🍎 Snack'];
+
+const ACTS = [
+  // Cardio
+  {id:'walk',  name:'Walking',       icon:'🚶',met:3.8, cat:'Cardio'},
+  {id:'run',   name:'Running',       icon:'🏃',met:9.8, cat:'Cardio'},
+  {id:'cycle', name:'Cycling',       icon:'🚴',met:7.5, cat:'Cardio'},
+  {id:'swim',  name:'Swimming',      icon:'🏊',met:8.0, cat:'Cardio'},
+  {id:'hiit',  name:'HIIT',          icon:'⚡',met:10.5,cat:'Cardio'},
+  {id:'stairs',name:'Stairs',        icon:'🪜',met:8.0, cat:'Cardio'},
+  // Calisthenics
+  {id:'pushup',name:'Push-ups',      icon:'💪',met:4.0, cat:'Calisthenics'},
+  {id:'pullup',name:'Pull-ups',      icon:'🏗️',met:5.0, cat:'Calisthenics'},
+  {id:'squat', name:'Squats',        icon:'🦵',met:5.0, cat:'Calisthenics'},
+  {id:'burpee',name:'Burpees',       icon:'🔥',met:8.0, cat:'Calisthenics'},
+  {id:'plank', name:'Plank',         icon:'🧱',met:3.0, cat:'Calisthenics'},
+  {id:'situp', name:'Sit-ups',       icon:'🤸',met:3.8, cat:'Calisthenics'},
+  {id:'lunge', name:'Lunges',        icon:'🦿',met:4.5, cat:'Calisthenics'},
+  {id:'dip',   name:'Dips',          icon:'⬇️',met:4.5, cat:'Calisthenics'},
+  {id:'jumpr', name:'Jump Rope',     icon:'🪢',met:11.0,cat:'Calisthenics'},
+  // Gym
+  {id:'lift',  name:'Weight Lifting',icon:'🏋️',met:5.0, cat:'Gym'},
+  {id:'yoga',  name:'Yoga',          icon:'🧘',met:2.5, cat:'Gym'},
+  {id:'pilat', name:'Pilates',       icon:'🤼',met:3.0, cat:'Gym'},
+];
+
+// ─── State ───────────────────────────────────────────────────────
+const S = {
+  tab: 'home',
+  modal: null,    // 'food' | 'workout'
+  entries:  JSON.parse(localStorage.getItem('ef5_food') || '[]'),
+  workouts: JSON.parse(localStorage.getItem('ef5_wkt')  || '[]'),
+  // food form
+  ff: { name:'', grams:'100', carb:'', prot:'', fat:'', meal:MEALS[0] },
+  // workout form
+  wf: { act:'walk', mins:'30', intensity:'moderate', note:'' },
+  // barcode lookup
+  bcStatus: 'idle', // idle | loading | found | miss
+};
+
+function save(){
+  localStorage.setItem('ef5_food', JSON.stringify(S.entries));
+  localStorage.setItem('ef5_wkt',  JSON.stringify(S.workouts));
+}
+
+// ─── Math ────────────────────────────────────────────────────────
+function classify(c,p,f){
+  if(p>=c && p>=f) return 'P';
+  if(c>=f)         return 'S';
+  return 'F';
+}
+function calcFood(carb,prot,fat,grams){
+  const k=grams/100, c=carb*k, p=prot*k, f=fat*k;
+  const type=classify(c,p,f);
+  let ex = type==='P' ? p/7 : type==='S' ? c/15 : f/5;
+  return { type, exchanges:Math.round(ex*2)/2, kcal:c*4+p*4+f*9, carb:c, prot:p, fat:f };
+}
+function calcBurn(actId, mins, intensity){
+  const a=ACTS.find(x=>x.id===actId); if(!a) return 0;
+  const m=intensity==='easy'?.75:intensity==='hard'?1.3:1.0;
+  return Math.round(a.met*m*WT_KG*(mins/60));
+}
+function todayKey(){ return new Date().toDateString(); }
+function getTotals(){
+  const today=todayKey();
+  const foods=S.entries.filter(e=>e.day===today);
+  const wkts =S.workouts.filter(w=>w.day===today);
+  const eaten=foods.reduce((a,e)=>({kcal:a.kcal+e.kcal,prot:a.prot+e.prot,carb:a.carb+e.carb,fat:a.fat+e.fat}),{kcal:0,prot:0,carb:0,fat:0});
+  const burned=wkts.reduce((s,w)=>s+w.burned,0);
+  const net=eaten.kcal-burned;
+  return { foods, wkts, eaten, burned, net, deficit:TARGET-net, onTrack:net<=TARGET };
+}
+function getPreview(){
+  const f=S.ff;
+  const c=parseFloat(f.carb)||0, p=parseFloat(f.prot)||0, fa=parseFloat(f.fat)||0;
+  if(!c&&!p&&!fa) return null;
+  return calcFood(c,p,fa, parseFloat(f.grams)||100);
+}
+
+// ─── Barcode (photo → BarcodeDetector → Open Food Facts) ─────────
+document.getElementById('bc-input').addEventListener('change', async function(){
+  const file = this.files[0]; if(!file) return;
+  this.value='';
+
+  // Show loading state in form
+  S.bcStatus='loading'; render();
+  toast('🔍 Reading barcode…','var(--teal)','#09090B');
+
+  // BarcodeDetector is available natively in Chrome/Android
+  // On iOS Safari we skip detection and show manual entry
+  if(!('BarcodeDetector' in window)){
+    S.bcStatus='noapi'; render();
+    toast('Enter barcode number below','var(--amber)','#09090B');
+    return;
+  }
+
+  try{
+    const detector = new BarcodeDetector({ formats:['ean_13','ean_8','upc_a','upc_e','code_128','code_39'] });
+    const bitmap   = await createImageBitmap(file);
+    const results  = await detector.detect(bitmap);
+    if(!results.length){ S.bcStatus='nocode'; render(); toast('No barcode found — enter manually','var(--red)','#fff'); return; }
+
+    const code = results[0].rawValue;
+    toast('✓ Barcode read — looking up…','var(--teal)','#09090B');
+
+    const r = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json?fields=product_name,nutriments,serving_size`);
+    const d = await r.json();
+    if(d.status!==1){ S.bcStatus='miss'; render(); toast('Product not in database','var(--red)','#fff'); return; }
+
+    const n=d.product.nutriments;
+    const carb=+(n['carbohydrates_100g']||0).toFixed(1);
+    const prot=+(n['proteins_100g']||0).toFixed(1);
+    const fat =+(n['fat_100g']||0).toFixed(1);
+    const name=d.product.product_name||'Scanned product';
+    const serving=Math.round(parseFloat(d.product.serving_size)||100);
+
+    S.ff={ ...S.ff, name, carb:String(carb), prot:String(prot), fat:String(fat), grams:String(serving) };
+    S.bcStatus='found'; render();
+    toast('✓ '+name,'var(--grn)','#09090B');
+  }catch(e){
+    S.bcStatus='idle'; render();
+    toast('Lookup failed — enter manually','var(--red)','#fff');
+  }
+});
+
+function triggerScan(){
+  S.modal='food'; S.bcStatus='idle'; render();
+  // small delay to let modal render, then trigger file input
+  setTimeout(()=>document.getElementById('bc-input').click(), 120);
+}
+
+// ─── Toast ───────────────────────────────────────────────────────
+let toastTimer=null;
+function toast(msg, bg='var(--teal)', color='#09090B'){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.style.background=bg; el.style.color=color;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.classList.remove('show'),2500);
+}
+
+// ─── Actions ─────────────────────────────────────────────────────
+function addFood(){
+  const f=S.ff;
+  const c=parseFloat(f.carb)||0, p=parseFloat(f.prot)||0, fa=parseFloat(f.fat)||0;
+  const g=parseFloat(f.grams)||100;
+  if(!c&&!p&&!fa){ toast('Enter at least one macro value','var(--red)','#fff'); return; }
+  const res=calcFood(c,p,fa,g);
+  S.entries.push({ id:Date.now(), day:todayKey(), name:f.name||'Food item', meal:f.meal, grams:g, ...res });
+  save();
+  S.modal=null; S.ff={ name:'',grams:'100',carb:'',prot:'',fat:'',meal:MEALS[0] }; S.bcStatus='idle';
+  render(); toast('✓ Added!','var(--teal)','#09090B');
+}
+
+function delFood(id){
+  S.entries=S.entries.filter(e=>e.id!==id); save(); render();
+  toast('Removed','var(--sub)','#fff');
+}
+
+function addWorkout(){
+  const w=S.wf, mins=parseInt(w.mins)||30;
+  const burned=calcBurn(w.act,mins,w.intensity);
+  const act=ACTS.find(a=>a.id===w.act);
+  S.workouts.push({ id:Date.now(), day:todayKey(), act:w.act, name:act.name, icon:act.icon, mins, intensity:w.intensity, note:w.note, burned });
+  save();
+  S.modal=null; S.wf={ act:'walk',mins:'30',intensity:'moderate',note:'' };
+  render(); toast('🔥 '+burned+' kcal burned!','var(--amber)','#09090B');
+}
+
+function delWorkout(id){
+  S.workouts=S.workouts.filter(w=>w.id!==id); save(); render();
+}
+
+function closeModal(){ S.modal=null; S.bcStatus='idle'; render(); }
+
+// ─── HTML helpers ─────────────────────────────────────────────────
+function pill(type){
+  const e=EX[type]; if(!e) return '';
+  return `<span class="pill" style="background:${e.bg};color:${e.color}">${e.name}</span>`;
+}
+function barRow(label,val,max,color){
+  const pct=Math.min(100,(val/max)*100), over=val>max;
+  return `<div class="bar-row">
+    <div class="bar-meta"><span>${label}</span><span style="color:${over?'var(--red)':'var(--sub)'}">${Math.round(val)}g / ${max}g</span></div>
+    <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${over?'var(--red)':color}"></div></div>
+  </div>`;
+}
+function ring(net){
+  const pct=Math.min(100,(net/TARGET)*100), over=net>TARGET;
+  const r=34, c=2*Math.PI*r, d=(pct/100)*c;
+  const col=over?'var(--red)':'var(--teal)';
+  return `<svg width="86" height="86" viewBox="0 0 86 86">
+    <circle cx="43" cy="43" r="${r}" fill="none" stroke="var(--s3)" stroke-width="6"/>
+    <circle cx="43" cy="43" r="${r}" fill="none" stroke="${col}" stroke-width="6"
+      stroke-dasharray="${d} ${c}" stroke-linecap="round" transform="rotate(-90 43 43)"/>
+    <text x="43" y="39" class="ring-txt" text-anchor="middle" fill="var(--txt)" font-size="12" font-weight="700">${Math.round(pct)}%</text>
+    <text x="43" y="52" class="ring-txt" text-anchor="middle" fill="var(--sub)" font-size="8">of 1300</text>
+  </svg>`;
+}
+
+// ─── Tab: Home ────────────────────────────────────────────────────
+function homeHTML(t){
+  const d=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short'});
+  return `
+  <div style="background:linear-gradient(165deg,#0A1414 0%,#0D1F1E 60%,#0E1520 100%);
+    padding:calc(50px + env(safe-area-inset-top,0px)) 20px 66px;position:relative;overflow:hidden">
+    <div style="position:absolute;inset:0;background:radial-gradient(ellipse 200px 200px at 85% 20%,rgba(45,212,191,.06),transparent)"></div>
+    <div style="position:absolute;inset:0;background:radial-gradient(ellipse 160px 160px at 10% 80%,rgba(252,160,0,.05),transparent)"></div>
+    <div style="position:relative">
+      <div style="font-size:9px;color:rgba(255,255,255,.3);letter-spacing:.18em;font-family:'Space Mono',monospace;margin-bottom:5px;text-transform:uppercase">${d}</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.4);margin-bottom:2px">net calories today</div>
+      <div style="font-size:44px;font-weight:700;letter-spacing:-.04em;line-height:1;color:${t.onTrack?'#fff':'var(--red)'};margin-bottom:4px">
+        ${Math.round(t.net)}<span style="font-size:16px;font-weight:400;color:rgba(255,255,255,.3);margin-left:4px">kcal</span>
+      </div>
+      <div style="font-size:11px;color:rgba(255,255,255,.3);font-family:'Space Mono',monospace;margin-bottom:12px">${Math.round(t.eaten.kcal)} eaten &minus; ${Math.round(t.burned)} burned</div>
+      <div style="display:inline-block;padding:5px 14px;border-radius:20px;font-size:11px;font-weight:600;
+        background:${t.onTrack?'rgba(74,222,128,.12)':'rgba(249,112,102,.12)'};
+        border:1px solid ${t.onTrack?'rgba(74,222,128,.25)':'rgba(249,112,102,.25)'};
+        color:${t.onTrack?'var(--grn)':'var(--red)'}">
+        ${t.onTrack?`✓ ${Math.round(t.deficit)} kcal deficit — on track!`:`⚠ ${Math.round(-t.deficit)} kcal over target`}
+      </div>
+    </div>
+    <div style="position:absolute;right:18px;top:calc(46px + env(safe-area-inset-top,0px))">${ring(t.net)}</div>
+  </div>
+
+  <!-- Macro card -->
+  <div style="margin:-38px 14px 0;background:var(--s1);border:1px solid var(--bd);border-radius:16px;
+    padding:16px;position:relative;z-index:2;box-shadow:0 8px 32px rgba(0,0,0,.4)">
+    <div style="font-size:9px;font-weight:700;color:var(--teal);letter-spacing:.12em;text-transform:uppercase;margin-bottom:12px">Macros today</div>
+    ${barRow('Protein', t.eaten.prot, 100, 'var(--violet)')}
+    ${barRow('Starch/Carbs', t.eaten.carb, 100, 'var(--amber)')}
+    ${barRow('Fat', t.eaten.fat, 45, '#F0C040')}
+  </div>
+
+  <!-- 3 action buttons -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;padding:14px 14px 0">
+    <button onclick="triggerScan()"
+      style="padding:16px 4px;border-radius:14px;background:var(--s1);border:1px solid var(--bd);
+        color:var(--txt);font-weight:700;font-size:11px;font-family:'Space Grotesk',sans-serif;
+        display:flex;flex-direction:column;align-items:center;gap:6px">
+      <span style="font-size:26px">📷</span>Scan Food
+    </button>
+    <button onclick="S.modal='food';render()"
+      style="padding:16px 4px;border-radius:14px;background:var(--teal);border:none;
+        color:#09090B;font-weight:700;font-size:11px;font-family:'Space Grotesk',sans-serif;
+        display:flex;flex-direction:column;align-items:center;gap:6px">
+      <span style="font-size:26px">✏️</span>Add Food
+    </button>
+    <button onclick="S.modal='workout';render()"
+      style="padding:16px 4px;border-radius:14px;background:var(--amber);border:none;
+        color:#09090B;font-weight:700;font-size:11px;font-family:'Space Grotesk',sans-serif;
+        display:flex;flex-direction:column;align-items:center;gap:6px">
+      <span style="font-size:26px">🏋️</span>Workout
+    </button>
+  </div>
+
+  <!-- Status breakdown -->
+  <div style="padding:12px 14px 0">
+    <div class="card">
+      <div style="font-size:9px;font-weight:700;color:var(--sub);letter-spacing:.12em;text-transform:uppercase;margin-bottom:12px">Weight loss status</div>
+      ${[
+        ['Target',TARGET+' kcal','var(--txt)'],
+        ['Food eaten',Math.round(t.eaten.kcal)+' kcal','var(--txt)'],
+        ['Exercise burned','−'+t.burned+' kcal','var(--amber)'],
+        ['Net calories',Math.round(t.net)+' kcal','var(--txt)'],
+        ['Today\'s deficit',Math.round(t.deficit)+' kcal',t.onTrack?'var(--grn)':'var(--red)'],
+        ['Projected weekly','~'+((t.deficit*7)/7700).toFixed(2)+' kg loss','var(--teal)'],
+      ].map(([l,v,c])=>`
+        <div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:9px;margin-bottom:9px;border-bottom:1px solid var(--bd)">
+          <span style="font-size:12px;color:var(--sub)">${l}</span>
+          <span style="font-size:12px;font-weight:700;font-family:'Space Mono',monospace;color:${c}">${v}</span>
+        </div>`).join('')}
+    </div>
+  </div>
+
+  <!-- Today's workouts summary -->
+  ${t.wkts.length?`
+  <div style="padding:0 14px">
+    <div class="card" style="border-left:3px solid var(--amber)">
+      <div style="font-size:9px;font-weight:700;color:var(--amber);letter-spacing:.12em;text-transform:uppercase;margin-bottom:10px">Exercise today</div>
+      ${t.wkts.map(w=>`
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--bd)">
+          <span style="font-size:13px">${w.icon} ${w.name} <span style="font-size:11px;color:var(--sub)">(${w.mins}m)</span></span>
+          <span style="font-family:'Space Mono',monospace;font-weight:700;color:var(--amber);font-size:13px">−${w.burned} kcal</span>
+        </div>`).join('')}
+      <div style="display:flex;justify-content:space-between;padding-top:2px">
+        <span style="font-size:12px;font-weight:600;color:var(--sub)">Total burned</span>
+        <span style="font-family:'Space Mono',monospace;font-weight:700;color:var(--amber);font-size:14px">−${t.burned} kcal</span>
+      </div>
+    </div>
+  </div>`:``}
+  `;
+}
+
+// ─── Tab: Diary ───────────────────────────────────────────────────
+function diaryHTML(t){
+  return `
+  <div class="ph">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div class="pt">Food Diary</div>
+      <button onclick="triggerScan()"
+        style="padding:8px 14px;border-radius:50px;background:none;border:1.5px solid var(--teal);
+          color:var(--teal);font-weight:600;font-size:12px;font-family:'Space Grotesk',sans-serif;
+          display:flex;align-items:center;gap:5px">📷 Scan</button>
+    </div>
+  </div>
+  <div style="padding:0 14px">
+    ${MEALS.map(meal=>{
+      const items=t.foods.filter(e=>e.meal===meal);
+      const mk=items.reduce((s,e)=>s+e.kcal,0);
+      return `
+      <div style="margin-bottom:18px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span style="font-size:13px;font-weight:600">${meal}</span>
+          ${mk>0?`<span style="font-size:10px;color:var(--sub);font-family:'Space Mono',monospace">${Math.round(mk)} kcal</span>`:''}
+        </div>
+        ${items.length===0?`
+          <div style="background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:12px;
+            text-align:center;font-size:12px;color:var(--dim);font-style:italic">Nothing logged yet</div>`:''}
+        ${items.map(e=>`
+          <div class="card2" style="display:flex;justify-content:space-between;align-items:flex-start">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:600;margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${e.name}</div>
+              <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;flex-wrap:wrap">
+                ${pill(e.type)}
+                <span style="font-size:10px;color:var(--dim);font-family:'Space Mono',monospace">${e.exchanges} ex · ${e.grams}g</span>
+              </div>
+              <div style="font-size:10px;color:var(--dim);font-family:'Space Mono',monospace">
+                P:${Math.round(e.prot)}g S:${Math.round(e.carb)}g F:${Math.round(e.fat)}g
+                <b style="color:var(--sub)"> · ${Math.round(e.kcal)} kcal</b>
+              </div>
+            </div>
+            <button onclick="delFood(${e.id})"
+              style="border:none;background:rgba(249,112,102,.1);color:var(--red);border-radius:8px;
+                width:28px;height:28px;font-size:15px;margin-left:10px;flex-shrink:0;
+                display:flex;align-items:center;justify-content:center;font-weight:700">×</button>
+          </div>`).join('')}
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+// ─── Tab: Workouts ────────────────────────────────────────────────
+function workoutTabHTML(t){
+  return `
+  <div class="ph">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div class="pt">Move</div>
+      <button onclick="S.modal='workout';render()"
+        style="padding:8px 16px;border-radius:50px;background:var(--amber);border:none;
+          color:#09090B;font-weight:700;font-size:12px;font-family:'Space Grotesk',sans-serif">+ Log</button>
+    </div>
+  </div>
+  <div style="padding:0 14px">
+    ${t.wkts.length===0?`
+      <div class="card" style="text-align:center;padding:30px 20px">
+        <div style="font-size:42px;margin-bottom:12px">🤸</div>
+        <div style="font-size:14px;font-weight:600;margin-bottom:6px">No workouts yet today</div>
+        <div style="font-size:12px;color:var(--sub);line-height:1.7;margin-bottom:18px">
+          20 push-ups burns ~40 kcal.<br>10 min burpees = 130 kcal — same as a 30 min jog.
+        </div>
+        <button class="btn btn-amber" onclick="S.modal='workout';render()" style="border:none">Log First Workout</button>
+      </div>`:
+    t.wkts.map(w=>`
+      <div class="card" style="border-left:3px solid var(--amber)">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div style="flex:1">
+            <div style="font-size:15px;font-weight:700;margin-bottom:4px">${w.icon} ${w.name}</div>
+            <div style="font-size:11px;color:var(--sub);font-family:'Space Mono',monospace">${w.mins} min · ${w.intensity}</div>
+            ${w.note?`<div style="font-size:11px;color:var(--dim);margin-top:4px;font-style:italic">${w.note}</div>`:''}
+          </div>
+          <div style="text-align:right;flex-shrink:0;margin-left:12px">
+            <div style="font-size:26px;font-weight:700;color:var(--amber);font-family:'Space Mono',monospace;line-height:1">${w.burned}</div>
+            <div style="font-size:9px;color:var(--dim);font-family:'Space Mono',monospace">kcal burned</div>
+          </div>
+        </div>
+        <button onclick="delWorkout(${w.id})"
+          style="margin-top:10px;background:rgba(249,112,102,.1);border:none;color:var(--red);
+            border-radius:8px;padding:5px 14px;font-size:11px;font-weight:600;font-family:'Space Grotesk',sans-serif">Remove</button>
+      </div>`).join('')}
+
+    <!-- Tips card -->
+    <div class="card" style="margin-top:4px">
+      <div style="font-size:9px;font-weight:700;color:var(--amber);letter-spacing:.12em;text-transform:uppercase;margin-bottom:12px">Tips for you</div>
+      ${[
+        ['💪 Push-ups (morning)','3×15 reps before breakfast = boosts metabolism all morning'],
+        ['🦵 Desk squats','10 squats every hour at work = ~80 extra kcal burned daily'],
+        ['🔥 Burpees 10 min','Equivalent calorie burn to a 30-min jog — no equipment needed'],
+        ['🏗️ Pull-ups 3×/week','Best upper body builder, can use a doorframe bar at home'],
+        ['🧱 Daily plank','3×40 sec = stronger core, fixes posture from sitting all day'],
+        ['🚶 Bülach station','Your Basel commute walk = free 130 kcal every Tue & Thu'],
+        ['🪢 Jump rope 10 min','Burns 130 kcal — highest calorie/minute of all calisthenics'],
+      ].map(([h,d])=>`
+        <div style="margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--bd)">
+          <div style="font-size:12px;font-weight:600;margin-bottom:2px">${h}</div>
+          <div style="font-size:11px;color:var(--sub);line-height:1.5">${d}</div>
+        </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+// ─── Modal: Food ─────────────────────────────────────────────────
+function foodModalHTML(){
+  const f=S.ff, prev=getPreview();
+  const statusMsg = {
+    loading:'🔍 Looking up product…',
+    found:'✓ Macros filled from barcode!',
+    miss:'Product not found — enter macros manually below',
+    noapi:'Your browser doesn\'t support live scanning — enter the barcode number below or fill in manually',
+    nocode:'No barcode detected in photo — try again or enter manually',
+    idle:''
+  }[S.bcStatus]||'';
+
+  return `
+  <div class="overlay" id="food-ov" onclick="if(event.target===this)closeModal()">
+    <div class="sheet su">
+      <div class="hdl" onclick="closeModal()"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div style="font-size:17px;font-weight:700">Add Food</div>
+        <button onclick="triggerScan()"
+          style="padding:7px 14px;border-radius:50px;background:none;border:1.5px solid var(--teal);
+            color:var(--teal);font-weight:600;font-size:11px;font-family:'Space Grotesk',sans-serif;
+            display:flex;align-items:center;gap:4px">📷 Scan barcode</button>
+      </div>
+
+      ${statusMsg?`<div style="background:${S.bcStatus==='found'?'rgba(74,222,128,.1)':'rgba(252,160,0,.1)'};
+        border:1px solid ${S.bcStatus==='found'?'rgba(74,222,128,.2)':'rgba(252,160,0,.2)'};
+        border-radius:10px;padding:10px 12px;margin-bottom:14px;
+        font-size:12px;font-weight:600;color:${S.bcStatus==='found'?'var(--grn)':'var(--amber)'}">${statusMsg}</div>`:''}
+
+      <div class="fg"><label class="lbl">Food name</label>
+        <input class="inp" value="${escH(f.name)}" oninput="S.ff.name=this.value" placeholder="e.g. Chicken breast"/></div>
+
+      <div class="fg"><label class="lbl">Meal</label>
+        <select class="inp" onchange="S.ff.meal=this.value" style="appearance:none">
+          ${MEALS.map(m=>`<option${m===f.meal?' selected':''}>${m}</option>`).join('')}
+        </select></div>
+
+      <!-- Gram input — big and easy -->
+      <div class="fg">
+        <label class="lbl">How many grams are you eating?</label>
+        <div style="display:flex;align-items:center;gap:10px">
+          <input class="inp" id="gram-inp" type="number" value="${escH(f.grams)}"
+            oninput="S.ff.grams=this.value;renderPreview()"
+            style="font-size:28px;font-weight:700;font-family:'Space Mono',monospace;text-align:center;flex:1"/>
+          <span style="font-size:22px;font-weight:700;color:var(--sub)">g</span>
+        </div>
+        <!-- Gram quick-select -->
+        <div style="display:flex;gap:7px;margin-top:8px;flex-wrap:wrap">
+          ${[50,100,150,200,250,300].map(g=>`
+            <button onclick="S.ff.grams='${g}';document.getElementById('gram-inp').value='${g}';renderPreview()"
+              style="padding:6px 12px;border-radius:8px;border:1.5px solid var(--bd);background:var(--s2);
+                color:var(--sub);font-size:12px;font-weight:600;font-family:'Space Grotesk',sans-serif">${g}g</button>`).join('')}
+        </div>
+      </div>
+
+      <!-- 3 macro boxes per 100g -->
+      <div style="background:var(--s2);border:1px solid var(--bd);border-radius:12px;padding:14px;margin-bottom:14px">
+        <div style="font-size:9px;font-weight:700;color:var(--teal);letter-spacing:.12em;text-transform:uppercase;margin-bottom:12px">Per 100g — read from the label</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+          <div class="mbox" style="border-color:rgba(155,126,248,.3)">
+            <span style="color:var(--violet)">Protein (g)</span>
+            <input type="number" value="${escH(f.prot)}" oninput="S.ff.prot=this.value;renderPreview()" placeholder="0" style="color:var(--violet)"/>
+          </div>
+          <div class="mbox" style="border-color:rgba(252,160,0,.3)">
+            <span style="color:var(--amber)">Starch (g)</span>
+            <input type="number" value="${escH(f.carb)}" oninput="S.ff.carb=this.value;renderPreview()" placeholder="0" style="color:var(--amber)"/>
+          </div>
+          <div class="mbox" style="border-color:rgba(240,192,64,.3)">
+            <span style="color:#F0C040">Fat (g)</span>
+            <input type="number" value="${escH(f.fat)}" oninput="S.ff.fat=this.value;renderPreview()" placeholder="0" style="color:#F0C040"/>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live preview -->
+      <div id="prev-box"></div>
+
+      <button class="btn btn-teal" onclick="addFood()">Add to Diary ✓</button>
+    </div>
+  </div>`;
+}
+
+function renderPreview(){
+  const prev=getPreview();
+  const box=document.getElementById('prev-box'); if(!box) return;
+  if(!prev){ box.innerHTML=''; return; }
+  const e=EX[prev.type];
+  box.innerHTML=`
+    <div style="background:var(--s2);border:1px solid var(--bd);border-radius:12px;
+      padding:12px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:9px;color:var(--sub);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">Preview</div>
+        <span class="pill" style="background:${e.bg};color:${e.color}">${e.name}</span>
+      </div>
+      <div style="text-align:right;font-family:'Space Mono',monospace">
+        <div style="font-size:22px;font-weight:700;color:var(--teal)">${prev.exchanges}
+          <span style="font-size:11px;font-weight:400;color:var(--sub)">ex</span></div>
+        <div style="font-size:11px;color:var(--dim)">${Math.round(prev.kcal)} kcal</div>
+        <div style="font-size:10px;color:var(--dim)">P:${Math.round(prev.prot)}g S:${Math.round(prev.carb)}g F:${Math.round(prev.fat)}g</div>
+      </div>
+    </div>`;
+}
+
+// ─── Modal: Workout ───────────────────────────────────────────────
+function workoutModalHTML(){
+  const w=S.wf;
+  const cats=['Cardio','Calisthenics','Gym'];
+  const selAct=ACTS.find(a=>a.id===w.act);
+  const dur=parseInt(w.mins)||0;
+  const est=dur>0?calcBurn(w.act,dur,w.intensity):0;
+
+  function actBtn(a){
+    const sel=w.act===a.id;
+    return `<button onclick="S.wf.act='${a.id}';render()"
+      style="padding:9px 8px;border-radius:10px;font-family:'Space Grotesk',sans-serif;font-size:11px;
+        font-weight:${sel?700:500};display:flex;align-items:center;gap:5px;text-align:left;
+        border:1.5px solid ${sel?'var(--amber)':'var(--bd)'};
+        background:${sel?'rgba(252,160,0,.1)':'var(--s2)'};
+        color:${sel?'var(--amber)':'var(--sub)'}">
+      <span style="font-size:15px">${a.icon}</span>${a.name}
+    </button>`;
+  }
+
+  return `
+  <div class="overlay" id="wkt-ov" onclick="if(event.target===this)closeModal()">
+    <div class="sheet su" style="max-height:95vh">
+      <div class="hdl" onclick="closeModal()"></div>
+      <div style="font-size:17px;font-weight:700;color:var(--amber);margin-bottom:14px">Log Workout</div>
+
+      ${cats.map(cat=>`
+        <div class="fg">
+          <div class="lbl">${cat}</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">
+            ${ACTS.filter(a=>a.cat===cat).map(actBtn).join('')}
+          </div>
+        </div>`).join('')}
+
+      <div class="fg"><label class="lbl">Duration (minutes)</label>
+        <div style="position:relative">
+          <input class="inp" type="number" value="${w.mins}" oninput="S.wf.mins=this.value;renderEstimate()"
+            style="font-size:24px;font-weight:700;font-family:'Space Mono',monospace;padding-right:50px;text-align:center"/>
+          <span style="position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--sub);font-weight:600">min</span>
+        </div>
+      </div>
+
+      <div class="fg">
+        <div class="lbl">Intensity</div>
+        <div style="display:flex;gap:8px">
+          ${[['easy','😌 Easy'],['moderate','💪 Moderate'],['hard','🔥 Hard']].map(([k,l])=>{
+            const sel=w.intensity===k;
+            return `<button onclick="S.wf.intensity='${k}';renderEstimate()"
+              style="flex:1;padding:10px 4px;border-radius:10px;font-family:'Space Grotesk',sans-serif;
+                font-size:11px;font-weight:${sel?700:500};
+                border:1.5px solid ${sel?'var(--amber)':'var(--bd)'};
+                background:${sel?'rgba(252,160,0,.1)':'var(--s2)'};
+                color:${sel?'var(--amber)':'var(--sub)'}">${l}</button>`;
+          }).join('')}
+        </div>
+      </div>
+
+      <div class="fg"><label class="lbl">Note (optional)</label>
+        <input class="inp" value="${escH(w.note)}" oninput="S.wf.note=this.value" placeholder="e.g. Morning push-up set"/></div>
+
+      <div id="est-box">
+        ${est>0?estimateHTML(selAct,dur,w.intensity,est):''}
+      </div>
+
+      <button class="btn btn-amber" onclick="addWorkout()" style="border:none">Log Workout 🔥</button>
+    </div>
+  </div>`;
+}
+
+function estimateHTML(a,dur,intensity,est){
+  return `<div style="background:rgba(252,160,0,.08);border:1px solid rgba(252,160,0,.2);border-radius:12px;
+    padding:12px 16px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
+    <div>
+      <div style="font-size:9px;font-weight:700;color:var(--amber);letter-spacing:.12em;text-transform:uppercase;margin-bottom:3px">Estimated burn</div>
+      <div style="font-size:11px;color:var(--sub)">${a.icon} ${a.name} · ${dur} min · ${intensity}</div>
+    </div>
+    <div style="font-size:28px;font-weight:700;color:var(--amber);font-family:'Space Mono',monospace;line-height:1">
+      ${est}<span style="font-size:11px;font-weight:400"> kcal</span>
+    </div>
+  </div>`;
+}
+
+function renderEstimate(){
+  const w=S.wf, dur=parseInt(w.mins)||0;
+  const est=dur>0?calcBurn(w.act,dur,w.intensity):0;
+  const a=ACTS.find(x=>x.id===w.act);
+  const box=document.getElementById('est-box'); if(!box) return;
+  box.innerHTML=est>0?estimateHTML(a,dur,w.intensity,est):'';
+}
+
+// ─── Utility ─────────────────────────────────────────────────────
+function escH(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+
+// ─── Main render ─────────────────────────────────────────────────
+function render(){
+  const t=getTotals();
+  const tabContent = S.tab==='home' ? homeHTML(t) : S.tab==='diary' ? diaryHTML(t) : workoutTabHTML(t);
+  const nav = ['home','diary','workouts'].map((k,i)=>{
+    const [ico,lbl]=[['🏠','Home'],['📋','Diary'],['🏋️','Move']][i];
+    const active=S.tab===k;
+    return `<button class="nb" onclick="S.tab='${k}';render()" style="color:${active?'var(--teal)':'var(--dim)'}">
+      <span class="ni">${ico}</span>
+      <span class="nl" style="font-weight:${active?700:500}">${lbl}</span>
+    </button>`;
+  }).join('');
+
+  document.getElementById('root').innerHTML = `
+    <div>${tabContent}</div>
+    <nav id="nav">${nav}</nav>
+    ${S.modal==='food'    ? foodModalHTML()    : ''}
+    ${S.modal==='workout' ? workoutModalHTML() : ''}
+  `;
+
+  // Re-render preview if food modal open
+  if(S.modal==='food') renderPreview();
+}
+
+// ─── PWA ─────────────────────────────────────────────────────────
+let dp;
+document.getElementById('ibtn').addEventListener('click',async()=>{
+  if(!dp) return; dp.prompt();
+  const{outcome}=await dp.userChoice;
+  if(outcome==='accepted') document.getElementById('ibanner').classList.remove('on'); dp=null;
+});
+document.getElementById('ix').addEventListener('click',()=>document.getElementById('ibanner').classList.remove('on'));
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('ibanner').classList.add('on');});
+
+if(/iPad|iPhone|iPod/.test(navigator.userAgent)&&!navigator.standalone){
+  setTimeout(()=>document.getElementById('ios-tip').classList.add('on'),1600);
+}
+
+if('serviceWorker' in navigator){
+  const sw=`const C='ef6';self.addEventListener('install',e=>e.waitUntil(caches.open(C).then(c=>c.add('/'))));self.addEventListener('fetch',e=>e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request))));`;
+  navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:'application/javascript'}))).catch(()=>{});
+}
+
+// Manifest
+const mf={name:'ExchangeFit',short_name:'ExchangeFit',display:'standalone',background_color:'#0C0C0E',theme_color:'#0C0C0E',start_url:'.',orientation:'portrait',icons:[{src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='40' fill='%230C0C0E'/%3E%3Ctext x='96' y='130' font-size='110' text-anchor='middle'%3E%F0%9F%A5%97%3C/text%3E%3C/svg%3E",sizes:'192x192',type:'image/svg+xml'}]};
+const ml=document.createElement('link');ml.rel='manifest';ml.href=URL.createObjectURL(new Blob([JSON.stringify(mf)],{type:'application/json'}));
+document.head.appendChild(ml);
+
+// ─── Boot ─────────────────────────────────────────────────────────
+render();
+</script>
+</body>
+</html>
